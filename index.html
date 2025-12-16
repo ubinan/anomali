@@ -22,7 +22,7 @@ body { background:#f8f9fa; }
   justify-content:center;
   z-index:9999;
 }
-.login-logo{max-width:120px;margin-bottom:10px;}
+.logo-padi svg{width:90px;height:90px;}
 </style>
 </head>
 
@@ -31,8 +31,21 @@ body { background:#f8f9fa; }
 <!-- ================= LOGIN ================= -->
 <div id="loginOverlay">
   <div class="card p-4 shadow text-center" style="width:380px">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/9/9f/Logo_BPS.svg"
-         class="login-logo mx-auto d-block">
+
+    <!-- LOGO PADI -->
+    <div class="logo-padi mx-auto mb-2">
+      <svg viewBox="0 0 100 100">
+        <path d="M50 90 C45 65 35 50 20 30" stroke="#2e7d32" stroke-width="5" fill="none"/>
+        <path d="M50 90 C55 65 65 50 80 30" stroke="#2e7d32" stroke-width="5" fill="none"/>
+        <circle cx="20" cy="30" r="6" fill="#f9a825"/>
+        <circle cx="26" cy="38" r="6" fill="#fbc02d"/>
+        <circle cx="32" cy="26" r="6" fill="#f9a825"/>
+        <circle cx="80" cy="30" r="6" fill="#f9a825"/>
+        <circle cx="74" cy="38" r="6" fill="#fbc02d"/>
+        <circle cx="68" cy="26" r="6" fill="#f9a825"/>
+      </svg>
+    </div>
+
     <h5 class="fw-bold mb-1">DAUN PADI</h5>
     <div class="text-muted mb-3">Deteksi Anomali Ubinan Padi</div>
 
@@ -64,10 +77,8 @@ body { background:#f8f9fa; }
 
 <div id="sheetWarning" class="alert alert-danger d-none mb-3"></div>
 
-<!-- NOTIFIKASI TIDAK ADA DATA -->
 <div id="noDataAlert" class="alert alert-info d-none mb-3">
-  ℹ️ <b>Tidak ditemukan Anomali</b><br>
-  Tidak ada data anomali pada sheet yang dipilih.
+  ℹ️ <b>Tidak ditemukan Anomali</b>
 </div>
 
 <ul class="nav nav-tabs mb-3">
@@ -84,15 +95,11 @@ body { background:#f8f9fa; }
   <div class="card-body row g-3">
     <div class="col-md-3">
       <label>Filter Subround</label>
-      <select id="filterSubround" class="form-select">
-        <option value="ALL">Semua</option>
-      </select>
+      <select id="filterSubround" class="form-select"><option value="ALL">Semua</option></select>
     </div>
     <div class="col-md-3">
       <label>Filter Kabupaten</label>
-      <select id="filterKab" class="form-select">
-        <option value="ALL">Semua</option>
-      </select>
+      <select id="filterKab" class="form-select"><option value="ALL">Semua</option></select>
     </div>
   </div>
 </div>
@@ -108,25 +115,7 @@ body { background:#f8f9fa; }
 
 <!-- TAB GRAFIK -->
 <div class="tab-pane fade" id="tabGrafik">
-
-<div class="card mb-3">
-  <div class="card-body row g-3">
-    <div class="col-md-3">
-      <label>Filter Subround</label>
-      <select id="filterSubroundGrafik" class="form-select">
-        <option value="ALL">Semua</option>
-      </select>
-    </div>
-    <div class="col-md-3">
-      <label>Filter Kabupaten</label>
-      <select id="filterKabGrafik" class="form-select">
-        <option value="ALL">Semua</option>
-      </select>
-    </div>
-  </div>
-</div>
-
-<canvas id="chartKab"></canvas>
+  <canvas id="chartKab"></canvas>
 </div>
 
 </div>
@@ -139,13 +128,11 @@ for(let i=3301;i<=3329;i++) users.push(String(i));
 for(let i=3371;i<=3376;i++) users.push(String(i));
 
 function doLogin(){
-  if(users.includes(loginUser.value) && loginUser.value===loginPass.value){
+  if(users.includes(loginUser.value)&&loginUser.value===loginPass.value){
     sessionStorage.setItem("login","1");
     loginOverlay.style.display="none";
     dashboard.style.display="block";
-  }else{
-    loginError.classList.remove("d-none");
-  }
+  }else loginError.classList.remove("d-none");
 }
 function logout(){sessionStorage.clear();location.reload();}
 if(sessionStorage.getItem("login")==="1"){
@@ -156,19 +143,10 @@ if(sessionStorage.getItem("login")==="1"){
 /* ================= API ================= */
 const API_URL="https://script.google.com/macros/s/AKfycbx2dFcDZz-6foawOTtMtjE2XdG1V2it1UdnTi4ZVPIGn-lOsyPHK8Rvy13aAcCQGViROQ/exec";
 
-/* ================= WARNING ================= */
-const warningText={
-  strata:"Pastikan pengisian strata sesuai kondisi petak.",
-  strata_r601:"Periksa kesesuaian strata dan jenis lahan.",
-  r501:"Survei Ubinan hanya dilaksanakan oleh BPS.",
-  r604:"Verifikasi luas r604 sesuai bidang yang diubin.",
-  r605:"Pastikan Campuran/Tumpangsari pada petak yang sama.",
-  benih_per_hektar:"Benih hanya untuk bidang r604.",
-  pupuk_per_hektar:"Pupuk hanya untuk bidang r604.",
-  r701:"Konfirmasi berat ubinan ekstrem.",
-  r702:"Konfirmasi jumlah rumpun ekstrem.",
-  r809:"Pastikan persepsi petani sejalan produktivitas."
-};
+/* ================= SHEET KHUSUS ================= */
+const fullSheet=[
+  "Progress","Penjelasan Anomali","Rekap Anomali","Subsegmen Anomali"
+];
 
 let rawData=[],header=[],chart;
 
@@ -178,36 +156,34 @@ fetch(API_URL+"?action=sheets")
 .then(list=>{
   const filtered=list.filter(s=>s.toLowerCase()!=="raw data");
   sheetSelect.innerHTML=filtered.map(s=>`<option>${s}</option>`).join("");
-  showWarning(); loadData();
+  loadData();
 });
+sheetSelect.onchange=loadData;
 
-sheetSelect.onchange=()=>{showWarning();loadData();};
-
-function showWarning(){
-  const t=warningText[sheetSelect.value];
-  sheetWarning.classList.toggle("d-none",!t);
-  if(t) sheetWarning.innerHTML="⚠️ <b>Perhatian:</b><br>"+t;
-}
-
-/* ================= DATA ================= */
+/* ================= LOAD DATA ================= */
 function loadData(){
   fetch(API_URL+"?action=data&sheet="+sheetSelect.value)
   .then(r=>r.json())
   .then(res=>{
     header=[...res.header];
-    rawData=res.data.filter(r=>r[header.indexOf("flag_2")]==1);
+    rawData=[...res.data];
 
-    if(rawData.length===0){
-      noDataAlert.classList.remove("d-none");
-      dataTable.tHead.innerHTML="";
-      dataTable.tBodies[0].innerHTML="";
-      if(chart) chart.destroy();
-      return;
+    if(!fullSheet.includes(sheetSelect.value)){
+      rawData=rawData.filter(r=>r[header.indexOf("flag_2")]==1);
+      if(rawData.length===0){
+        noDataAlert.classList.remove("d-none");
+        dataTable.tHead.innerHTML="";
+        dataTable.tBodies[0].innerHTML="";
+        if(chart) chart.destroy();
+        return;
+      }else noDataAlert.classList.add("d-none");
     }else{
       noDataAlert.classList.add("d-none");
     }
 
-    buildFilters(); renderTable(); buildChart();
+    buildFilters();
+    renderTable();
+    buildChart();
   });
 }
 
@@ -215,8 +191,6 @@ function loadData(){
 function buildFilters(){
   fill(filterSubround,0);
   fill(filterKab,2);
-  fill(filterSubroundGrafik,0);
-  fill(filterKabGrafik,2);
 }
 function fill(sel,idx){
   const u=[...new Set(rawData.map(r=>r[idx]).filter(Boolean))];
@@ -224,8 +198,6 @@ function fill(sel,idx){
 }
 filterSubround.onchange=renderTable;
 filterKab.onchange=renderTable;
-filterSubroundGrafik.onchange=buildChart;
-filterKabGrafik.onchange=buildChart;
 
 /* ================= TABLE ================= */
 function renderTable(){
@@ -233,31 +205,31 @@ function renderTable(){
   if(filterSubround.value!="ALL") data=data.filter(r=>r[0]==filterSubround.value);
   if(filterKab.value!="ALL") data=data.filter(r=>r[2]==filterKab.value);
 
-  const idxFlag=header.indexOf("flag_2");
-  let lastCol=idxFlag;
-  data.forEach(r=>r.forEach((v,i)=>{if(v!==""&&v!=null&&i>lastCol)lastCol=i;}));
+  let head=[...header];
+  let rows=data.map(r=>[...r]);
 
-  const cleanHeader=header.slice(0,lastCol+1);
-  cleanHeader.splice(idxFlag+1,0,"Sesuai Lapangan","Butuh Perbaikan");
+  if(!fullSheet.includes(sheetSelect.value)){
+    const idx=header.indexOf("flag_2");
+    head.splice(idx+1,0,"Sesuai Lapangan","Butuh Perbaikan");
+    rows=rows.map(r=>{
+      r.splice(idx+1,0,'<input type="checkbox">','<input type="checkbox">');
+      return r;
+    });
+  }
 
-  dataTable.tHead.innerHTML="<tr>"+cleanHeader.map(h=>`<th>${h}</th>`).join("")+"</tr>";
-  dataTable.tBodies[0].innerHTML=data.map(r=>{
-    const row=r.slice(0,lastCol+1);
-    row.splice(idxFlag+1,0,'<input type="checkbox">','<input type="checkbox">');
-    return "<tr>"+row.map(c=>`<td>${c??""}</td>`).join("")+"</tr>";
-  }).join("");
+  dataTable.tHead.innerHTML="<tr>"+head.map(h=>`<th>${h}</th>`).join("")+"</tr>";
+  dataTable.tBodies[0].innerHTML=rows.map(r=>"<tr>"+r.map(c=>`<td>${c??""}</td>`).join("")+"</tr>").join("");
 }
 
 /* ================= CHART ================= */
 function buildChart(){
-  let d=[...rawData];
-  if(filterSubroundGrafik.value!="ALL") d=d.filter(r=>r[0]==filterSubroundGrafik.value);
-  if(filterKabGrafik.value!="ALL") d=d.filter(r=>r[2]==filterKabGrafik.value);
-
+  if(fullSheet.includes(sheetSelect.value)){
+    if(chart) chart.destroy();
+    return;
+  }
   const c={};
-  d.forEach(r=>c[r[2]]=(c[r[2]]||0)+1);
+  rawData.forEach(r=>c[r[2]]=(c[r[2]]||0)+1);
   const labels=Object.keys(c).sort((a,b)=>Number(a)-Number(b));
-
   if(chart) chart.destroy();
   chart=new Chart(chartKab,{
     type:"bar",
