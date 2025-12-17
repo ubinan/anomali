@@ -11,6 +11,8 @@
 body { background:#f8f9fa; }
 .card { border-radius:12px; }
 .alert { white-space: pre-line; }
+
+/* LOGIN */
 #loginOverlay{
   position:fixed;
   inset:0;
@@ -29,6 +31,7 @@ body { background:#f8f9fa; }
 <!-- ================= LOGIN ================= -->
 <div id="loginOverlay">
   <div class="card p-4 shadow text-center" style="width:380px">
+
     <div class="logo-padi mx-auto mb-2">
       <svg viewBox="0 0 100 100">
         <path d="M50 90 C45 65 35 50 20 30" stroke="#2e7d32" stroke-width="5" fill="none"/>
@@ -47,7 +50,11 @@ body { background:#f8f9fa; }
 
     <input id="loginUser" class="form-control mb-2" placeholder="User">
     <input id="loginPass" type="password" class="form-control mb-2" placeholder="Password">
-    <div id="loginError" class="text-danger small d-none mb-2">User atau password salah</div>
+
+    <div id="loginError" class="text-danger small d-none mb-2">
+      User atau password salah
+    </div>
+
     <button class="btn btn-success w-100" onclick="doLogin()">Login</button>
   </div>
 </div>
@@ -67,22 +74,14 @@ body { background:#f8f9fa; }
   </div>
 </div>
 
-<!-- 🔴 WARNING -->
+<!-- WARNING SHEET -->
 <div id="sheetWarning" class="alert alert-danger d-none mb-3"></div>
 
 <div id="noDataAlert" class="alert alert-info d-none mb-3">
   ℹ️ <b>Tidak ditemukan Anomali</b>
 </div>
 
-<ul class="nav nav-tabs mb-3">
-  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabTabel">Tabel Data</a></li>
-  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabGrafik">Grafik</a></li>
-</ul>
-
-<div class="tab-content">
-
-<!-- TAB TABEL -->
-<div class="tab-pane fade show active" id="tabTabel">
+<!-- FILTERS (GLOBAL) -->
 <div class="card mb-3">
   <div class="card-body row g-3">
     <div class="col-md-3">
@@ -96,12 +95,23 @@ body { background:#f8f9fa; }
   </div>
 </div>
 
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabTabel">Tabel Data</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabGrafik">Grafik</a></li>
+</ul>
+
+<div class="tab-content">
+
+<!-- TAB TABEL -->
+<div class="tab-pane fade show active" id="tabTabel">
+
 <div class="table-responsive">
 <table class="table table-bordered table-striped" id="dataTable">
   <thead></thead>
   <tbody></tbody>
 </table>
 </div>
+
 </div>
 
 <!-- TAB GRAFIK -->
@@ -131,9 +141,10 @@ if(sessionStorage.getItem("login")==="1"){
   dashboard.style.display="block";
 }
 
+/* ================= API ================= */
 const API_URL="https://script.google.com/macros/s/AKfycbx2dFcDZz-6foawOTtMtjE2XdG1V2it1UdnTi4ZVPIGn-lOsyPHK8Rvy13aAcCQGViROQ/exec";
 
-/* ================= WARNING ================= */
+/* ================= WARNING TEXT ================= */
 const warningText = {
   strata: "Pastikan pengisian strata sudah sesuai kondisi petak, terutama memastikan tidak terjadi kekeliruan antara Padi Ladang dan Padi Sawah Non-Irigasi.",
   strata_r601: "Periksa dan koreksi isian strata padi apabila tidak selaras dengan jenis lahan, seperti strata Padi Sawah yang tercatat pada lahan Bukan Sawah, atau strata Padi Ladang yang tercatat pada lahan Sawah Irigasi.",
@@ -148,21 +159,12 @@ const warningText = {
   r809: "Pastikan persepsi petani sejalan dengan produktivitas."
 };
 
+/* ================= SHEET KHUSUS ================= */
 const fullSheet=["Progress","Penjelasan Anomali","Rekap Anomali","Subsegmen Anomali"];
 
 let rawData=[],header=[],chart;
 
-/* ================= WARNING HANDLER ================= */
-function updateWarning(){
-  const key = sheetSelect.value;
-  if(warningText[key]){
-    sheetWarning.innerHTML = "⚠️ <b>PERINGATAN</b><br>" + warningText[key];
-    sheetWarning.classList.remove("d-none");
-  } else {
-    sheetWarning.classList.add("d-none");
-  }
-}
-
+/* ================= LOAD SHEET ================= */
 fetch(API_URL+"?action=sheets")
 .then(r=>r.json())
 .then(list=>{
@@ -171,6 +173,17 @@ fetch(API_URL+"?action=sheets")
   loadData();
 });
 sheetSelect.onchange=loadData;
+
+/* ================= WARNING HANDLER ================= */
+function updateWarning(){
+  const key=sheetSelect.value;
+  if(warningText[key]){
+    sheetWarning.textContent=warningText[key];
+    sheetWarning.classList.remove("d-none");
+  }else{
+    sheetWarning.classList.add("d-none");
+  }
+}
 
 /* ================= LOAD DATA ================= */
 function loadData(){
@@ -182,23 +195,15 @@ function loadData(){
     header=[...res.header];
     rawData=[...res.data];
 
-    if(sheetSelect.value==="Subsegmen Anomali"){
-      const idxTotal=header.indexOf("TOTAL");
-      if(idxTotal!==-1){
-        rawData=rawData.filter(r=>Number(r[idxTotal])>0);
-      }
-    }
-
     if(!fullSheet.includes(sheetSelect.value)){
       rawData=rawData.filter(r=>r[header.indexOf("flag_2")]==1);
-    }
-
-    if(rawData.length===0){
-      noDataAlert.classList.remove("d-none");
-      dataTable.tHead.innerHTML="";
-      dataTable.tBodies[0].innerHTML="";
-      if(chart) chart.destroy();
-      return;
+      if(rawData.length===0){
+        noDataAlert.classList.remove("d-none");
+        dataTable.tHead.innerHTML="";
+        dataTable.tBodies[0].innerHTML="";
+        if(chart) chart.destroy();
+        return;
+      }else noDataAlert.classList.add("d-none");
     }else noDataAlert.classList.add("d-none");
 
     buildFilters();
@@ -216,15 +221,20 @@ function fill(sel,idx){
   const u=[...new Set(rawData.map(r=>r[idx]).filter(Boolean))];
   sel.innerHTML='<option value="ALL">Semua</option>'+u.map(v=>`<option>${v}</option>`).join('');
 }
-filterSubround.onchange=renderTable;
-filterKab.onchange=renderTable;
+filterSubround.onchange=()=>{renderTable(); buildChart();};
+filterKab.onchange=()=>{renderTable(); buildChart();};
 
-/* ================= TABLE ================= */
-function renderTable(){
+/* ================= GET FILTERED DATA ================= */
+function getFilteredData(){
   let data=[...rawData];
   if(filterSubround.value!="ALL") data=data.filter(r=>r[0]==filterSubround.value);
   if(filterKab.value!="ALL") data=data.filter(r=>r[2]==filterKab.value);
+  return data;
+}
 
+/* ================= TABLE ================= */
+function renderTable(){
+  let data=getFilteredData();
   let head=[...header];
   let rows=data.map(r=>[...r]);
 
@@ -247,8 +257,9 @@ function buildChart(){
     if(chart) chart.destroy();
     return;
   }
+  const data=getFilteredData();
   const c={};
-  rawData.forEach(r=>c[r[2]]=(c[r[2]]||0)+1);
+  data.forEach(r=>c[r[2]]=(c[r[2]]||0)+1);
   const labels=Object.keys(c).sort((a,b)=>Number(a)-Number(b));
   if(chart) chart.destroy();
   chart=new Chart(chartKab,{
