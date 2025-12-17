@@ -232,6 +232,19 @@ function getFilteredData(){
   return data;
 }
 
+/* ================= LOCAL STORAGE FOR CHECKBOX ================= */
+function getCheckboxKey(sheet, subround, kab, index){
+  return `checkbox-${sheet}-${subround}-${kab}-${index}`;
+}
+function saveCheckbox(sheet, subround, kab, index, type, checked){
+  const key = getCheckboxKey(sheet, subround, kab, index) + `-${type}`;
+  localStorage.setItem(key, checked ? "1" : "0");
+}
+function loadCheckbox(sheet, subround, kab, index, type){
+  const key = getCheckboxKey(sheet, subround, kab, index) + `-${type}`;
+  return localStorage.getItem(key) === "1";
+}
+
 /* ================= TABLE ================= */
 function renderTable(){
   let data=getFilteredData();
@@ -241,14 +254,26 @@ function renderTable(){
   if(!fullSheet.includes(sheetSelect.value)){
     const idx=header.indexOf("flag_2");
     head.splice(idx+1,0,"Sesuai Lapangan","Butuh Perbaikan");
-    rows=rows.map(r=>{
-      r.splice(idx+1,0,'<input type="checkbox">','<input type="checkbox">');
+    rows=rows.map((r, i)=>{
+      const subround = r[0];
+      const kab = r[2];
+      const checked1 = loadCheckbox(sheetSelect.value, subround, kab, i, "sesuai") ? "checked" : "";
+      const checked2 = loadCheckbox(sheetSelect.value, subround, kab, i, "perbaikan") ? "checked" : "";
+      r.splice(idx+1,0,
+        `<input type="checkbox" ${checked1} onchange="handleCheckbox(this, '${sheetSelect.value}', '${subround}', '${kab}', ${i}, 'sesuai')">`,
+        `<input type="checkbox" ${checked2} onchange="handleCheckbox(this, '${sheetSelect.value}', '${subround}', '${kab}', ${i}, 'perbaikan')">`
+      );
       return r;
     });
   }
 
   dataTable.tHead.innerHTML="<tr>"+head.map(h=>`<th>${h}</th>`).join("")+"</tr>";
   dataTable.tBodies[0].innerHTML=rows.map(r=>"<tr>"+r.map(c=>`<td>${c??""}</td>`).join("")+"</tr>").join("");
+}
+
+/* ================= HANDLE CHECKBOX ================= */
+function handleCheckbox(cb, sheet, subround, kab, index, type){
+  saveCheckbox(sheet, subround, kab, index, type, cb.checked);
 }
 
 /* ================= CHART ================= */
