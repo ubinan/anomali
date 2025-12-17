@@ -195,15 +195,21 @@ function loadData(){
     header=[...res.header];
     rawData=[...res.data];
 
-    if(!fullSheet.includes(sheetSelect.value)){
+    if(sheetSelect.value === "Subsegmen Anomali"){
+      const totalIdx = header.indexOf("TOTAL");
+      if(totalIdx !== -1){
+        rawData = rawData.filter(r => Number(r[totalIdx]) > 0);
+      }
+    } else if(!fullSheet.includes(sheetSelect.value)){
       rawData=rawData.filter(r=>r[header.indexOf("flag_2")]==1);
-      if(rawData.length===0){
-        noDataAlert.classList.remove("d-none");
-        dataTable.tHead.innerHTML="";
-        dataTable.tBodies[0].innerHTML="";
-        if(chart) chart.destroy();
-        return;
-      }else noDataAlert.classList.add("d-none");
+    }
+
+    if(rawData.length===0){
+      noDataAlert.classList.remove("d-none");
+      dataTable.tHead.innerHTML="";
+      dataTable.tBodies[0].innerHTML="";
+      if(chart) chart.destroy();
+      return;
     }else noDataAlert.classList.add("d-none");
 
     buildFilters();
@@ -314,6 +320,38 @@ function buildChart(){
             backgroundColor: "#228B22" // Hijau tua
           }
         ]
+      },
+      options: {
+        scales: {
+          x: { stacked: false },
+          y: { stacked: false }
+        }
+      }
+    });
+  } else if(sheetSelect.value === "Subsegmen Anomali"){
+    const data = getFilteredData();
+    const kabIdx = 2; // Asumsi kolom Kabupaten adalah indeks 2 (sesuai filterKab)
+    const totalIdx = header.indexOf("TOTAL");
+    if(totalIdx === -1 || data.length === 0){
+      console.log("Kolom TOTAL tidak ditemukan atau data kosong untuk Subsegmen Anomali.");
+      return;
+    }
+    const grouped = {};
+    data.forEach(r => {
+      const kab = r[kabIdx];
+      if(!grouped[kab]) grouped[kab] = 0;
+      grouped[kab] += Number(r[totalIdx]) || 0;
+    });
+    const labels = Object.keys(grouped).sort((a,b)=>Number(a)-Number(b));
+    chart = new Chart(chartKab, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          label: "TOTAL",
+          data: labels.map(l => grouped[l]),
+          backgroundColor: "#FFD700" // Warna kuning untuk TOTAL
+        }]
       },
       options: {
         scales: {
