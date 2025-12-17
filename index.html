@@ -253,19 +253,60 @@ function renderTable(){
 
 /* ================= CHART ================= */
 function buildChart(){
-  if(fullSheet.includes(sheetSelect.value)){
-    if(chart) chart.destroy();
-    return;
-  }
-  const data=getFilteredData();
-  const c={};
-  data.forEach(r=>c[r[2]]=(c[r[2]]||0)+1);
-  const labels=Object.keys(c).sort((a,b)=>Number(a)-Number(b));
   if(chart) chart.destroy();
-  chart=new Chart(chartKab,{
-    type:"bar",
-    data:{labels,datasets:[{label:"Jumlah Flag_2 = 1",data:labels.map(l=>c[l])}]}
-  });
+  if(sheetSelect.value === "Progress"){
+    const data = getFilteredData();
+    const kabIdx = 1; // Kolom B
+    const targetIdx = 3; // Kolom D
+    const realisasiIdx = 4; // Kolom E
+    if(data.length === 0){
+      console.log("Data kosong untuk Progress.");
+      return;
+    }
+    const grouped = {};
+    data.forEach(r => {
+      const kab = r[kabIdx];
+      if(kab !== "00"){ // Skip kabupaten 00
+        if(!grouped[kab]) grouped[kab] = {target: 0, realisasi: 0};
+        grouped[kab].target += Number(r[targetIdx]) || 0;
+        grouped[kab].realisasi += Number(r[realisasiIdx]) || 0;
+      }
+    });
+    const labels = Object.keys(grouped).sort((a,b)=>Number(a)-Number(b));
+    chart = new Chart(chartKab, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Target",
+            data: labels.map(l => grouped[l].target),
+            backgroundColor: "#90EE90" // Hijau muda
+          },
+          {
+            label: "Realisasi",
+            data: labels.map(l => grouped[l].realisasi),
+            backgroundColor: "#228B22" // Hijau tua
+          }
+        ]
+      },
+      options: {
+        scales: {
+          x: { stacked: false },
+          y: { stacked: false }
+        }
+      }
+    });
+  } else if(!fullSheet.includes(sheetSelect.value)){
+    const data = getFilteredData();
+    const c = {};
+    data.forEach(r => c[r[2]] = (c[r[2]] || 0) + 1);
+    const labels = Object.keys(c).sort((a,b)=>Number(a)-Number(b));
+    chart = new Chart(chartKab, {
+      type: "bar",
+      data: { labels, datasets: [{ label: "Jumlah Flag_2 = 1", data: labels.map(l => c[l]) }] }
+    });
+  }
 }
 </script>
 
