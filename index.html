@@ -151,16 +151,19 @@ const warningText = {
   r501: "Saat ini, kegiatan Survei Ubinan hanya dilaksanakan oleh BPS",
   r604: "Lakukan verifikasi luas pada r604 adalah luas seluruh petak yang dikuasai petani dengan jenis tanaman padi dalam bidang yang sama dengan petak yang diubin",
   r605: "Pastikan pola penanaman Campuran/Tumpangsari dilakukan pada petak yang sama (bukan di pematang/galengan), serta cantumkan jenis tanaman tumpangsari pada Blok Catatan.",
-  r607_r801b_r802b: "Rincian r607 terkait dengan Rincian R801 dan R802. Jika petani menerima bantuan benih atau pupuk dari pemerintah pusat atau daerah dengan R801B atau R802B terisi, maka R607 harus terisi 1. Bantuan Pemerintah",
-  benih_per_hektar: "Pastikan jumlah penggunaan benih yang digunakan petani hanya pada bidang yang sama yang tercatat pada r604, bukan seluruh lahan milik petani.",
-  pupuk_per_hektar: "Jumlah pupuk adalah total pupuk dalam kg (1 kg/liter untuk pupuk cair). Pastikan hanya pada bidang yang sama yang tercatat pada r604, bukan seluruh lahan milik petani",
-  r701: "Lakukan konfirmasi ke petugas terkait berat ubinan ekstrem. Jika memang sesuai lapangan, tambahkan fenomena pendukung di Blok Catatan.",
-  r702: "Lakukan konfirmasi ke petugas terkait jumlah rumpun per plot ubinan ekstrem. Jika memang sesuai lapangan, tambahkan fenomena pendukung di Blok Catatan.",
-  r809: "Pastikan persepsi petani akan hama, dampak perubahan iklim, dan kecukupan air sejalan dengan persepsi terkait produktivitas. "
+  r607_r801b_r802b: "Jika R801B atau R802B terisi, maka R607 harus terisi 1 (Bantuan Pemerintah).",
+  benih_per_hektar: "Pastikan penggunaan benih hanya pada bidang yang sama dengan r604.",
+  pupuk_per_hektar: "Jumlah pupuk adalah total pupuk dalam kg (1 kg/liter untuk pupuk cair). Pastikan hanya pada bidang r604.",
+  r701: "Konfirmasi berat ubinan ekstrem dan tambahkan catatan.",
+  r702: "Konfirmasi jumlah rumpun ekstrem dan tambahkan catatan.",
+  r809: "Pastikan persepsi petani sejalan dengan produktivitas."
 };
 
 /* ================= SHEET KHUSUS ================= */
 const fullSheet=["Progress","Penjelasan Anomali","Rekap Anomali","Subsegmen Anomali"];
+
+/* ================= RED COLUMNS ================= */
+const redColumns = ["strata", "strata_r601", "r501", "r604", "r605", "r607_r801b_r802b", "benih_per_hektar", "pupuk_per_hektar", "r701", "r702", "r809"];
 
 let rawData=[],header=[],chart;
 
@@ -274,7 +277,13 @@ function renderTable(){
   }
 
   dataTable.tHead.innerHTML="<tr>"+head.map(h=>`<th>${h}</th>`).join("")+"</tr>";
-  dataTable.tBodies[0].innerHTML=rows.map(r=>"<tr>"+r.map(c=>`<td>${c??""}</td>`).join("")+"</tr>").join("");
+  dataTable.tBodies[0].innerHTML=rows.map(r=>"<tr>"+r.map((c, j)=>{
+    let className = "";
+    if (redColumns.includes(head[j]) && Number(c) === 1) {
+      className = "bg-danger text-white";
+    }
+    return `<td class="${className}">${c??""}</td>`;
+  }).join("")+"</tr>").join("");
 }
 
 /* ================= HANDLE CHECKBOX ================= */
