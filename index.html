@@ -279,7 +279,7 @@ function renderTable(){
   dataTable.tHead.innerHTML="<tr>"+head.map(h=>`<th>${h}</th>`).join("")+"</tr>";
   dataTable.tBodies[0].innerHTML=rows.map(r=>"<tr>"+r.map((c, j)=>{
     let className = "";
-    if (redColumns.includes(head[j]) && Number(c) === 1) {
+    if (sheetSelect.value !== "Rekap Anomali" && redColumns.includes(head[j]) && Number(c) === 1) {
       className = "bg-danger text-white";
     }
     return `<td class="${className}">${c??""}</td>`;
