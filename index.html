@@ -207,12 +207,10 @@ let rawData=[],header=[],chart;
 fetch(API_URL+"?action=sheets")
 .then(r=>r.json())
 .then(list=>{
-  sheetSelect.innerHTML=list.filter(s=>s.toLowerCase()!=="raw data")
+  sheetSelect.innerHTML=list.filter(s=>s.toLowerCase()!=="raw data" && s !== "JenisPadi")
     .map(s=>`<option>${s}</option>`).join("");
   loadData();
 });
-sheetSelect.onchange=loadData;
-
 /* ================= WARNING HANDLER ================= */
 function updateWarning(){
   const key = sheetSelect.value.toLowerCase(); // Ubah key menjadi lowercase untuk match dengan warningText
