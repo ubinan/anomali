@@ -6,6 +6,8 @@
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
 body { background:#f8f9fa; }
@@ -98,29 +100,83 @@ body { background:#f8f9fa; }
 <ul class="nav nav-tabs mb-3">
   <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabTabel">Tabel Data</a></li>
   <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabGrafik">Grafik</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabPeta">Peta</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabJuknis">Juknis</a></li>
 </ul>
 
 <div class="tab-content">
 
-<!-- TAB TABEL -->
-<div class="tab-pane fade show active" id="tabTabel">
+<!-- Tambahkan div tab-content baru di dalam div.tab-content -->
+<div class="tab-content">
+  <!-- TAB TABEL (tidak berubah) -->
+  <div class="tab-pane fade show active" id="tabTabel">
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped" id="dataTable">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
 
-<div class="table-responsive">
-<table class="table table-bordered table-striped" id="dataTable">
-  <thead></thead>
-  <tbody></tbody>
-</table>
+  <!-- TAB GRAFIK (tidak berubah) -->
+  <div class="tab-pane fade" id="tabGrafik">
+    <canvas id="chartKab"></canvas>
+  </div>
+
+  <!-- TAB PETA (diperbaiki dengan debug log) -->
+  <div class="tab-pane fade" id="tabPeta">
+    <div class="card mb-3">
+      <div class="card-body row g-3">
+        <div class="col-md-3">
+          <label>Filter Kabupaten</label>
+          <select id="filterKabPeta" class="form-select"><option value="ALL">Semua</option></select>
+        </div>
+        <div class="col-md-3">
+          <label>Filter Subround</label>
+          <select id="filterSubroundPeta" class="form-select"><option value="ALL">Semua</option></select>
+        </div>
+        <div class="col-md-3">
+          <label>Filter Subsegmen</label>
+          <select id="filterSubsegmenPeta" class="form-select"><option value="ALL">Semua</option></select>
+        </div>
+        <div class="col-md-3">
+          <label>Filter Bulan</label>
+          <select id="filterBulanPeta" class="form-select"><option value="ALL">Semua</option></select>
+        </div>
+        <div class="col-md-3">
+          <label>Tipe Peta</label>
+          <select id="mapType" class="form-select">
+            <option value="streets">Peta Jalan</option>
+            <option value="satellite">Peta Satelit</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="map" style="height: 500px;"></div>
+  </div>
+
+  <!-- TAB JUKNIS (baru) -->
+  <div class="tab-pane fade" id="tabJuknis">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Petunjuk Penggunaan (Juknis)</h5>
+        <p class="card-text">
+          <!-- Placeholder untuk konten Juknis. Ganti dengan konten aktual jika ada. -->
+          Berikut adalah petunjuk penggunaan aplikasi DAUN PADI: Deteksi Anomali Ubinan Padi.<br>
+          1. Login menggunakan kode user dan password yang sama.<br>
+          2. Pilih sheet data yang ingin dilihat.<br>
+          3. Gunakan filter untuk menyaring data berdasarkan Subround dan Kabupaten.<br>
+          4. Pada tab Tabel, lihat data anomali dengan kolom merah menunjukkan anomali.<br>
+          5. Pada tab Grafik, lihat visualisasi data.<br>
+          6. Pada tab Peta, lihat peta Indonesia dengan filter Kabupaten dan Subround.<br>
+          7. Pada tab Juknis, baca petunjuk ini.<br>
+          <!-- Tambahkan lebih banyak konten jika diperlukan -->
+        </p>
+      </div>
+    </div>
+  </div>
 </div>
 
-</div>
-
-<!-- TAB GRAFIK -->
-<div class="tab-pane fade" id="tabGrafik">
-  <canvas id="chartKab"></canvas>
-</div>
-
-</div>
-</div>
 
 <script>
 /* ================= LOGIN ================= */
@@ -142,8 +198,8 @@ if(sessionStorage.getItem("login")==="1"){
 }
 
 /* ================= API ================= */
-const API_URL="https://script.google.com/macros/s/AKfycbz5mA_cLvAEiCV2zile4fio9EkCa4nZy9aahc0wO4xAeJw5UqJGj1ctKC9ouVhBcHgkZQ/exec";
-
+const API_URL_MAIN="https://script.google.com/macros/s/AKfycbz5mA_cLvAEiCV2zile4fio9EkCa4nZy9aahc0wO4xAeJw5UqJGj1ctKC9ouVhBcHgkZQ/exec";
+const API_URL_MAP = "https://script.google.com/macros/s/AKfycbw1yAeI0KFwBQIjJEa8Ft0V9CAghFfN1p5jO9oH_0wn0RLn4kaEQdMjChHdcox9-LAN/exec"; // Untuk data peta (Alokasi, Realisasi) - dari spreadsheet kedua
 /* ================= WARNING TEXT ================= */
 const warningText = {
   r108: "berisi '2. Ubinan Prakarsa/Daerah' atau '3. Ubinan Lainnya'",
@@ -204,7 +260,7 @@ const redColumns = [
 let rawData=[],header=[],chart;
 
 /* ================= LOAD SHEET ================= */
-fetch(API_URL+"?action=sheets")
+fetch(API_URL_MAIN+"?action=sheets")
 .then(r=>r.json())
 .then(list=>{
   sheetSelect.innerHTML=list.filter(s=>s.toLowerCase()!=="raw data")
@@ -228,7 +284,7 @@ function updateWarning(){
 function loadData(){
   updateWarning();
 
-  fetch(API_URL+"?action=data&sheet="+sheetSelect.value)
+  fetch(API_URL_MAIN+"?action=data&sheet="+sheetSelect.value)
   .then(r=>r.json())
   .then(res=>{
     header=[...res.header];
@@ -416,6 +472,205 @@ function buildChart(){
       data: { labels, datasets: [{ label: "Jumlah Flag_2 = 1", data: labels.map(l => c[l]) }] }
     });
   }
+}
+/* ================= PETA ================= */
+let map;
+let markers = [];
+let dataAlokasi = [];
+let dataRealisasi = [];
+let headerAlokasi = [];
+let headerRealisasi = [];
+
+// Fungsi helper untuk mencari indeks kolom (case-insensitive)
+function colIndex(header, name) {
+  return header.findIndex(h => h.toLowerCase() === name.toLowerCase());
+}
+
+function initMap() {
+  if (map) map.remove();
+  map = L.map('map').setView([-2.5, 118], 5); // Pusat Indonesia
+
+  // Layer untuk peta jalan dan satelit
+  const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  });
+
+  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+  });
+
+  // Default ke streets
+  streets.addTo(map);
+
+  // Event listener untuk mapType
+  mapType.onchange = function() {
+    map.eachLayer(function(layer) {
+      if (layer instanceof L.TileLayer) {
+        map.removeLayer(layer);
+      }
+    });
+    if (this.value === 'satellite') {
+      satellite.addTo(map);
+    } else {
+      streets.addTo(map);
+    }
+  };
+
+  // Muat data dari sheet Alokasi dan Realisasi menggunakan API_URL_MAP
+  Promise.all([
+    fetch(API_URL_MAP + "?action=data&sheet=Alokasi").then(r => r.json()),
+    fetch(API_URL_MAP + "?action=data&sheet=Realisasi").then(r => r.json())
+  ]).then(([resAlokasi, resRealisasi]) => {
+    headerAlokasi = [...resAlokasi.header];
+    dataAlokasi = [...resAlokasi.data];
+    headerRealisasi = [...resRealisasi.header];
+    dataRealisasi = [...resRealisasi.data];
+
+    // Debug: Log header untuk verifikasi
+    console.log("headerAlokasi:", headerAlokasi);
+    console.log("headerRealisasi:", headerRealisasi); // Tambahan: Lihat nama kolom yang sebenarnya
+
+    // Build filters untuk peta (gunakan data gabungan untuk fill options, asumsikan header serupa)
+    const allData = [...dataAlokasi, ...dataRealisasi];
+    const allHeader = headerAlokasi.length > 0 ? headerAlokasi : headerRealisasi; // Fallback ke headerAlokasi
+    // Hitung indeks secara dinamis (case-insensitive)
+    const kabIdx = colIndex(allHeader, "kabupaten") !== -1 ? colIndex(allHeader, "kabupaten") : 1;
+    const subroundIdx = colIndex(allHeader, "subround") !== -1 ? colIndex(allHeader, "subround") : 6;
+    const subsegmenIdx = colIndex(allHeader, "subsegmen") !== -1 ? colIndex(allHeader, "subsegmen") : 7;
+    const bulanIdx = colIndex(allHeader, "bulan") !== -1 ? colIndex(allHeader, "bulan") : 8;
+
+    // Debug indeks
+    console.log("kabIdx:", kabIdx, "subroundIdx:", subroundIdx, "subsegmenIdx:", subsegmenIdx, "bulanIdx:", bulanIdx);
+
+    fill(filterKabPeta, kabIdx);
+    fill(filterSubroundPeta, subroundIdx);
+    fill(filterSubsegmenPeta, subsegmenIdx);
+    fill(filterBulanPeta, bulanIdx);
+
+    // Event listeners untuk filter
+    filterKabPeta.onchange = updateMap;
+    filterSubroundPeta.onchange = updateMap;
+    filterSubsegmenPeta.onchange = updateMap;
+    filterBulanPeta.onchange = updateMap;
+
+    updateMap();
+  }).catch(err => console.error("Error loading map data:", err));
+}
+
+/* ================= UPDATE MAP ================= */
+function updateMap() {
+  // Hapus marker lama
+  markers.forEach(marker => map.removeLayer(marker));
+  markers = [];
+
+  // Gabung data dari Alokasi dan Realisasi
+  let allData = [
+    ...dataAlokasi.map(row => ({ ...row, sheet: "Alokasi" })),
+    ...dataRealisasi.map(row => ({ ...row, sheet: "Realisasi" }))
+  ];
+
+  // Hitung indeks secara dinamis berdasarkan header masing-masing (untuk akurasi)
+  const kabIdxAlokasi = colIndex(headerAlokasi, "kabupaten") !== -1 ? colIndex(headerAlokasi, "kabupaten") : 1;
+  const subroundIdxAlokasi = colIndex(headerAlokasi, "subround") !== -1 ? colIndex(headerAlokasi, "subround") : 6;
+  const subsegmenIdxAlokasi = colIndex(headerAlokasi, "subsegmen") !== -1 ? colIndex(headerAlokasi, "subsegmen") : 7;
+  const bulanIdxAlokasi = colIndex(headerAlokasi, "bulan") !== -1 ? colIndex(headerAlokasi, "bulan") : 8;
+  const kabIdxRealisasi = colIndex(headerRealisasi, "kabupaten") !== -1 ? colIndex(headerRealisasi, "kabupaten") : 1;
+  const subroundIdxRealisasi = colIndex(headerRealisasi, "subround") !== -1 ? colIndex(headerRealisasi, "subround") : 6;
+  const subsegmenIdxRealisasi = colIndex(headerRealisasi, "subsegmen") !== -1 ? colIndex(headerRealisasi, "subsegmen") : 7;
+  const bulanIdxRealisasi = colIndex(headerRealisasi, "bulan") !== -1 ? colIndex(headerRealisasi, "bulan") : 8;
+
+  // Filter berdasarkan filter (gunakan indeks yang sesuai dengan sheet)
+  if (filterKabPeta.value !== "ALL") {
+    allData = allData.filter(r => {
+      const idx = r.sheet === "Alokasi" ? kabIdxAlokasi : kabIdxRealisasi;
+      return r[idx] == filterKabPeta.value;
+    });
+  }
+  if (filterSubroundPeta.value !== "ALL") {
+    allData = allData.filter(r => {
+      const idx = r.sheet === "Alokasi" ? subroundIdxAlokasi : subroundIdxRealisasi;
+      return r[idx] == filterSubroundPeta.value;
+    });
+  }
+  if (filterSubsegmenPeta.value !== "ALL") {
+    allData = allData.filter(r => {
+      const idx = r.sheet === "Alokasi" ? subsegmenIdxAlokasi : subsegmenIdxRealisasi;
+      return r[idx] == filterSubsegmenPeta.value;
+    });
+  }
+  if (filterBulanPeta.value !== "ALL") {
+    allData = allData.filter(r => {
+      const idx = r.sheet === "Alokasi" ? bulanIdxAlokasi : bulanIdxRealisasi;
+      return r[idx] == filterBulanPeta.value;
+    });
+  }
+
+  console.log("Filtered data count:", allData.length); // Debug: jumlah data setelah filter
+
+  // Tambah marker untuk setiap titik koordinat
+  allData.forEach((row, index) => {
+    let lat, lng;
+    if (row.sheet === "Alokasi") {
+      const xIdx = colIndex(headerAlokasi, "x"); // Longitude
+      const yIdx = colIndex(headerAlokasi, "y"); // Latitude
+      if (xIdx !== -1 && yIdx !== -1) {
+        lng = parseFloat(row[xIdx]);
+        lat = parseFloat(row[yIdx]);
+        console.log(`Row ${index} Alokasi: raw lng=${row[xIdx]}, parsed lng=${lng}, raw lat=${row[yIdx]}, parsed lat=${lat}`);
+      }
+    } else if (row.sheet === "Realisasi") {
+      let aqIdx = colIndex(headerRealisasi, "AQ"); // Longitude
+      let arIdx = colIndex(headerRealisasi, "AR"); // Latitude
+      // Fallback jika tidak ditemukan: asumsikan indeks default (sesuaikan berdasarkan spreadsheet Anda, AQ adalah kolom ke-43 (0-based 42), AR ke-44 (0-based 43))
+      if (aqIdx === -1) {
+        aqIdx = 42; // Kolom AQ (longitude)
+        console.error(`AQ column not found, using fallback index ${aqIdx}. Available columns:`, headerRealisasi);
+      }
+      if (arIdx === -1) {
+        arIdx = 43; // Kolom AR (latitude)
+        console.error(`AR column not found, using fallback index ${arIdx}. Available columns:`, headerRealisasi);
+      }
+      console.log(`Row ${index} Realisasi: aqIdx=${aqIdx}, arIdx=${arIdx}`); // Debug indeks
+      if (aqIdx !== -1 && arIdx !== -1) {
+        lng = parseFloat(row[aqIdx]);
+        lat = parseFloat(row[arIdx]);
+        console.log(`Row ${index} Realisasi: raw lng=${row[aqIdx]}, parsed lng=${lng}, raw lat=${row[arIdx]}, parsed lat=${lat}`);
+      } else {
+        console.error(`AQ or AR column still not found for row ${index}`);
+      }
+    }
+
+    if (!isNaN(lat) && !isNaN(lng)) {
+      // Ubah marker: Biru untuk Alokasi, Kuning untuk Realisasi
+      const markerColor = row.sheet === "Realisasi" ? 'yellow' : 'blue';
+      const circleMarker = L.circleMarker([lat, lng], {
+        color: markerColor,
+        fillColor: markerColor,
+        fillOpacity: 0.7,
+        radius: 5
+      }).addTo(map)
+        .bindPopup(`Sheet: ${row.sheet}<br>Kabupaten: ${row[(row.sheet === "Alokasi" ? kabIdxAlokasi : kabIdxRealisasi)] || "N/A"}<br>Subround: ${row[(row.sheet === "Alokasi" ? subroundIdxAlokasi : subroundIdxRealisasi)] || "N/A"}<br>Subsegmen: ${row[(row.sheet === "Alokasi" ? subsegmenIdxAlokasi : subsegmenIdxRealisasi)] || "N/A"}<br>Bulan: ${row[(row.sheet === "Alokasi" ? bulanIdxAlokasi : bulanIdxRealisasi)] || "N/A"}`);
+      markers.push(circleMarker);
+    } else {
+      console.log(`Invalid coordinates for row ${index} in ${row.sheet}: lat=${lat}, lng=${lng}`);
+    }
+  });
+
+  console.log("Markers added:", markers.length);
+}
+
+// ... (kode setelahnya tetap sama)
+
+// Panggil initMap saat tab peta aktif
+document.querySelector('a[href="#tabPeta"]').addEventListener('shown.bs.tab', initMap);
+
+// Pastikan map diinisialisasi saat load data pertama kali jika tab aktif
+if (sessionStorage.getItem("login") === "1") {
+  setTimeout(() => {
+    if (document.querySelector('a[href="#tabPeta"]').classList.contains('active')) {
+      initMap();
+    }
+  }, 100);
 }
 </script>
 
