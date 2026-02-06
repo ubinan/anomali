@@ -687,29 +687,29 @@ function updateMap() {
     }
 
     // ================= DRAW MARKER =================
-    if (!isNaN(lat) && !isNaN(lng)) {
+if (!isNaN(lat) && !isNaN(lng)) {
 
-      const m = L.circleMarker([lat, lng], {
-        color: markerColor,
-        fillColor: markerColor,
-        fillOpacity: 0.85,
-        radius: 5
-      }).addTo(map);
+  const m = L.circleMarker([lat, lng], {
+    color: markerColor,
+    fillColor: markerColor,
+    fillOpacity: 0.85,
+    radius: 5
+  }).addTo(map);
 
-      // FORMAT KOORDINAT
-      let coordText = `<hr><b>Koordinat:</b><br>Lat: ${lat}<br>Lng: ${lng}`;
+  // popup tanpa nama kolom
+  let popupHTML = popupData
+    .filter(v => v !== undefined && v !== "")
+    .join("<br>");
 
-      // popup tanpa nama kolom
-      let popupHTML = popupData
-        .filter(v => v !== undefined && v !== "")
-        .join("<br>");
+  // koordinat satu baris di bawah
+  let coordText = `<hr><b>Koordinat:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-      popupHTML += coordText; // tambah di paling bawah
+  popupHTML += coordText;
 
-      m.bindPopup(popupHTML);
+  m.bindPopup(popupHTML);
 
-      markers.push(m);
-    }
+  markers.push(m);
+}
   });
 
   console.log("Total markers:", markers.length);
