@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 
 
 <style>
@@ -403,6 +403,41 @@ function renderTable(){
     }
     return `<td class="${className}">${c??""}</td>`;
   }).join("")+"</tr>").join("");
+
+  // PERBAIKAN: Tambahkan tombol unduh di bawah tabel jika ada data
+  const tableContainer = dataTable.parentElement; // Asumsikan tabel di dalam div
+  let downloadBtn = tableContainer.querySelector('.download-btn');
+  if (!downloadBtn) {
+    downloadBtn = document.createElement('button');
+    downloadBtn.className = 'btn btn-success mt-3 download-btn';
+    downloadBtn.innerHTML = '📥 Unduh Data Excel';
+    downloadBtn.onclick = downloadExcel;
+    tableContainer.appendChild(downloadBtn);
+  }
+  downloadBtn.style.display = data.length > 0 ? 'block' : 'none'; // Sembunyikan jika tidak ada data
+}
+
+/* ================= DOWNLOAD EXCEL ================= */
+function downloadExcel() {
+  const data = getFilteredData();
+  if (data.length === 0) {
+    alert('Tidak ada data untuk diunduh.');
+    return;
+  }
+
+  // Siapkan data untuk Excel: Header + Rows
+  const wsData = [header, ...data]; // Header sebagai baris pertama, lalu data
+
+  // Buat worksheet
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Buat workbook
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Data');
+
+  // Generate file dan download
+  const fileName = `Data_${sheetSelect.value}.xlsx`;
+  XLSX.writeFile(wb, fileName);
 }
 
 /* ================= HANDLE CHECKBOX ================= */
