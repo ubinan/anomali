@@ -9,6 +9,8 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+
+
 <style>
 body { background:#f8f9fa; }
 .card { border-radius:12px; }
@@ -597,7 +599,6 @@ function normalizeKab(val) {
 
 
 function updateMap() {
-
   markers.forEach(marker => map.removeLayer(marker));
   markers = [];
 
@@ -606,7 +607,7 @@ function updateMap() {
     ...dataRealisasi.map(row => ({ ...row, sheet: "Realisasi" }))
   ];
 
-  // INDEX HEADER
+  // INDEX HEADER (tetap sama)
   const kabIdxAlokasi = colIndex(headerAlokasi, "kabupaten");
   const subroundIdxAlokasi = colIndex(headerAlokasi, "subround");
   const subsegmenIdxAlokasi = colIndex(headerAlokasi, "subsegmen");
@@ -617,79 +618,86 @@ function updateMap() {
   const subsegmenIdxRealisasi = colIndex(headerRealisasi, "subsegmen");
   const bulanIdxRealisasi = colIndex(headerRealisasi, "bulan");
 
-  // KOLOM REALISASI STATUS
+  // KOLOM REALISASI STATUS (tetap sama)
   let fkIdx = colIndex(headerRealisasi, "realisasi");
 
-  // FILTER KABUPATEN MAP
+  // FILTER (tetap sama, termasuk filterKabPeta)
   if (filterKabPeta.value !== "ALL") {
     const filterKab = normalizeKab(filterKabPeta.value);
-
     allData = allData.filter(r => {
       let kab;
-
       if (r.sheet === "Alokasi") {
         let idxE = colLetterToIndex("E");
         kab = normalizeKab(r[idxE]);
       }
-
       if (r.sheet === "Realisasi") {
         let idxB = colLetterToIndex("B");
         kab = normalizeKab(r[idxB]);
       }
-
       return kab === filterKab;
     });
   }
-
   if (filterSubroundPeta.value !== "ALL")
     allData = allData.filter(r => r[(r.sheet==="Alokasi"?subroundIdxAlokasi:subroundIdxRealisasi)] == filterSubroundPeta.value);
-
   if (filterSubsegmenPeta.value !== "ALL")
     allData = allData.filter(r => r[(r.sheet==="Alokasi"?subsegmenIdxAlokasi:subsegmenIdxRealisasi)] == filterSubsegmenPeta.value);
-
   if (filterBulanPeta.value !== "ALL")
     allData = allData.filter(r => r[(r.sheet==="Alokasi"?bulanIdxAlokasi:bulanIdxRealisasi)] == filterBulanPeta.value);
 
+  // PERBAIKAN: Precompute map Alokasi untuk lookup cepat berdasarkan AA
+  const alokasiMap = {};
+  dataAlokasi.forEach(row => {
+    const aaIdx = colLetterToIndex("AA");
+    const aaValue = row[aaIdx];
+    if (aaValue) {
+      const xIdx = colIndex(headerAlokasi, "x");
+      const yIdx = colIndex(headerAlokasi, "y");
+      const lng = parseFloat(row[xIdx]);
+      const lat = parseFloat(row[yIdx]);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        alokasiMap[aaValue] = { lat, lng };
+      }
+    }
+  });
+
   // LOOP DATA
   allData.forEach((row, i) => {
-
     let lat, lng;
     let markerColor = "blue";
     let popupData = [];
+    let distanceText = ""; // Inisialisasi di awal
 
-    // ================= ALOKASI =================
-if (row.sheet === "Alokasi") {
-  const xIdx = colIndex(headerAlokasi, "x");
-  const yIdx = colIndex(headerAlokasi, "y");
+    // ================= ALOKASI ================= (tetap sama)
+    if (row.sheet === "Alokasi") {
+      const xIdx = colIndex(headerAlokasi, "x");
+      const yIdx = colIndex(headerAlokasi, "y");
+      lng = parseFloat(row[xIdx]);
+      lat = parseFloat(row[yIdx]);
 
-  lng = parseFloat(row[xIdx]);
-  lat = parseFloat(row[yIdx]);
+      const bIdx = 1;
+      const bValue = row[bIdx];
+      if (bValue === "U") {
+        markerColor = "blue";
+      } else if (bValue === "C") {
+        markerColor = "black";
+      } else {
+        markerColor = "blue";
+      }
 
-  // Perubahan: Tentukan markerColor berdasarkan kolom "B" (indeks 1, karena kolom B)
-  const bIdx = 1; // Hardcoded indeks untuk kolom B (A=0, B=1)
-  const bValue = row[bIdx];
-  if (bValue === "U") {
-    markerColor = "blue";
-  } else if (bValue === "C") {
-    markerColor = "black";
-  } else {
-    markerColor = "blue"; // Default jika tidak "U" atau "C"
-  }
+      let idxH  = colLetterToIndex("H");
+      let idxI  = colLetterToIndex("I");
+      let idxJ  = colLetterToIndex("J");
+      let idxM  = colLetterToIndex("M");
+      let idxAA = colLetterToIndex("AA");
 
-  let idxH  = colLetterToIndex("H");
-  let idxI  = colLetterToIndex("I");
-  let idxJ  = colLetterToIndex("J");
-  let idxM  = colLetterToIndex("M");
-  let idxAA = colLetterToIndex("AA");
-
-  popupData = [
-    row[idxH],
-    row[idxI],
-    row[idxJ],
-    row[idxM],
-    row[idxAA]
-  ];
-}
+      popupData = [
+        row[idxH],
+        row[idxI],
+        row[idxJ],
+        row[idxM],
+        row[idxAA]
+      ];
+    }
 
     // ================= REALISASI =================
     if (row.sheet === "Realisasi") {
@@ -701,8 +709,18 @@ if (row.sheet === "Alokasi") {
       lng = parseFloat(row[aqIdx]);
       lat = parseFloat(row[arIdx]);
 
-      let fk = fkIdx !== -1 ? String(row[fkIdx]).trim().toLowerCase() : "";
+      // PERBAIKAN: Hitung jarak cepat menggunakan alokasiMap
+      let fjIdx = colLetterToIndex("FJ");
+      const subsegmenId = row[fjIdx];
+      const alokasiCoord = alokasiMap[subsegmenId];
+      if (alokasiCoord) {
+        const dist = haversineDistance(lat, lng, alokasiCoord.lat, alokasiCoord.lng);
+        distanceText = `<br><b>Jarak ke titik Alokasi (subsegmen ${subsegmenId}):</b> ${dist.toFixed(2)} meter`;
+      } else {
+        distanceText = `<br><b>Jarak ke titik Alokasi (subsegmen ${subsegmenId}):</b> Tidak ada titik Alokasi yang cocok`;
+      }
 
+      let fk = fkIdx !== -1 ? String(row[fkIdx]).trim().toLowerCase() : "";
       if (fk === "alokasi") markerColor = "yellow";
       else if (fk === "tambahan") markerColor = "red";
       else markerColor = "gray";
@@ -710,46 +728,43 @@ if (row.sheet === "Alokasi") {
       let idxFF = colLetterToIndex("FF");
       let idxFG = colLetterToIndex("FG");
       let idxFH = colLetterToIndex("FH");
-      let idxFJ = colLetterToIndex("FJ");
 
       popupData = [
         row[idxFF],
         row[idxFG],
         row[idxFH],
-        row[idxFJ]
+        row[fjIdx]
       ];
     }
 
     // ================= DRAW MARKER =================
-if (!isNaN(lat) && !isNaN(lng)) {
+    if (!isNaN(lat) && !isNaN(lng)) {
+      const m = L.circleMarker([lat, lng], {
+        color: markerColor,
+        fillColor: markerColor,
+        fillOpacity: 0.85,
+        radius: 5
+      }).addTo(map);
 
-  const m = L.circleMarker([lat, lng], {
-    color: markerColor,
-    fillColor: markerColor,
-    fillOpacity: 0.85,
-    radius: 5
-  }).addTo(map);
+      // popup tanpa nama kolom
+      let popupHTML = popupData
+        .filter(v => v !== undefined && v !== "")
+        .join("<br>");
 
-  // popup tanpa nama kolom
-  let popupHTML = popupData
-    .filter(v => v !== undefined && v !== "")
-    .join("<br>");
+      // Tambahkan distanceText
+      popupHTML += distanceText;
 
-  // koordinat satu baris di bawah
-  let coordText = `<hr><b>Koordinat:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      // koordinat satu baris di bawah
+      let coordText = `<hr><b>Koordinat:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      popupHTML += coordText;
 
-  popupHTML += coordText;
-
-  m.bindPopup(popupHTML);
-
-  markers.push(m);
-}
+      m.bindPopup(popupHTML);
+      markers.push(m);
+    }
   });
 
   console.log("Total markers:", markers.length);
 }
-
-
 // ... (kode setelahnya tetap sama)
 
 // Panggil initMap saat tab peta aktif
@@ -811,6 +826,47 @@ if (filterKabPeta.value !== "ALL") {
   });
 }
 
+// Tambahkan fungsi untuk menghitung jarak Haversine dalam meter
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Radius bumi dalam meter
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Di dalam fungsi updateMap, setelah filter allData, tambahkan logika untuk menghitung jarak
+// Cari bagian loop allData.forEach((row, i) => { ... });
+
+// Di dalam if (row.sheet === "Realisasi") { ... }
+// Setelah mendapatkan lat, lng, tambahkan:
+
+let minDistance = Infinity;
+const currentSubsegmen = row[subsegmenIdxRealisasi];
+allData.forEach((otherRow, j) => {
+  if (i !== j && otherRow.sheet === "Realisasi" && otherRow[subsegmenIdxRealisasi] === currentSubsegmen) {
+    const otherLat = parseFloat(otherRow[arIdx]); // arIdx untuk lat Realisasi
+    const otherLng = parseFloat(otherRow[aqIdx]); // aqIdx untuk lng Realisasi
+    if (!isNaN(otherLat) && !isNaN(otherLng)) {
+      const dist = haversineDistance(lat, lng, otherLat, otherLng);
+      if (dist < minDistance) minDistance = dist;
+    }
+  }
+});
+
+// Kemudian, di bagian popupHTML, tambahkan:
+let distanceText = "";
+if (minDistance !== Infinity) {
+  distanceText = `<br><b>Jarak ke titik terdekat dalam subsegmen:</b> ${minDistance.toFixed(2)} meter`;
+} else {
+  distanceText = `<br><b>Jarak ke titik terdekat dalam subsegmen:</b> Tidak ada titik lain`;
+}
+
+// Gabungkan ke popupHTML sebelum coordText
+popupHTML += distanceText;
 
 </script>
 
