@@ -150,10 +150,34 @@ body { background:#f8f9fa; }
             <option value="satellite">Peta Satelit</option>
           </select>
         </div>
+		<!-- Tambahkan kolom baru untuk legenda setelah filter Tipe Peta -->
+<div class="col-md-12">
+  <label>Legenda</label>
+  <div class="d-flex flex-wrap">
+    <div class="me-3 mb-2">
+      <span style="display: inline-block; width: 12px; height: 12px; background-color: blue; border-radius: 50%; margin-right: 5px;"></span>
+      Titik Ubinan Alokasi Sampel Utama
+    </div>
+    <div class="me-3 mb-2">
+      <span style="display: inline-block; width: 12px; height: 12px; background-color: black; border-radius: 50%; margin-right: 5px;"></span>
+      Titik Ubinan Alokasi Sampel Cadangan
+    </div>
+    <div class="me-3 mb-2">
+      <span style="display: inline-block; width: 12px; height: 12px; background-color: yellow; border-radius: 50%; margin-right: 5px;"></span>
+      Titik Ubinan Realisasi Sampel Utama/Cadangan
+    </div>
+    <div class="me-3 mb-2">
+      <span style="display: inline-block; width: 12px; height: 12px; background-color: red; border-radius: 50%; margin-right: 5px;"></span>
+      Titik Ubinan Realisasi Sampel Tambahan
+    </div>
+  </div>
+</div>
       </div>
     </div>
     <div id="map" style="height: 500px;"></div>
   </div>
+
+
 
   <!-- TAB JUKNIS (baru) -->
   <div class="tab-pane fade" id="tabJuknis">
@@ -634,28 +658,38 @@ function updateMap() {
     let popupData = [];
 
     // ================= ALOKASI =================
-    if (row.sheet === "Alokasi") {
-      const xIdx = colIndex(headerAlokasi, "x");
-      const yIdx = colIndex(headerAlokasi, "y");
+if (row.sheet === "Alokasi") {
+  const xIdx = colIndex(headerAlokasi, "x");
+  const yIdx = colIndex(headerAlokasi, "y");
 
-      lng = parseFloat(row[xIdx]);
-      lat = parseFloat(row[yIdx]);
-      markerColor = "blue";
+  lng = parseFloat(row[xIdx]);
+  lat = parseFloat(row[yIdx]);
 
-      let idxH  = colLetterToIndex("H");
-      let idxI  = colLetterToIndex("I");
-      let idxJ  = colLetterToIndex("J");
-      let idxM  = colLetterToIndex("M");
-      let idxAA = colLetterToIndex("AA");
+  // Perubahan: Tentukan markerColor berdasarkan kolom "B" (indeks 1, karena kolom B)
+  const bIdx = 1; // Hardcoded indeks untuk kolom B (A=0, B=1)
+  const bValue = row[bIdx];
+  if (bValue === "U") {
+    markerColor = "blue";
+  } else if (bValue === "C") {
+    markerColor = "black";
+  } else {
+    markerColor = "blue"; // Default jika tidak "U" atau "C"
+  }
 
-      popupData = [
-        row[idxH],
-        row[idxI],
-        row[idxJ],
-        row[idxM],
-        row[idxAA]
-      ];
-    }
+  let idxH  = colLetterToIndex("H");
+  let idxI  = colLetterToIndex("I");
+  let idxJ  = colLetterToIndex("J");
+  let idxM  = colLetterToIndex("M");
+  let idxAA = colLetterToIndex("AA");
+
+  popupData = [
+    row[idxH],
+    row[idxI],
+    row[idxJ],
+    row[idxM],
+    row[idxAA]
+  ];
+}
 
     // ================= REALISASI =================
     if (row.sheet === "Realisasi") {
